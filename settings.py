@@ -57,5 +57,7 @@ symbols = {
 #     'ten_two_row': 27,
 # }
 payouts = {
-    'five_row': 9.7
+    'five_row': 3.39,
+    'three_row': 0.5,
+    'ten_row': 7.5
 }

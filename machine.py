@@ -101,6 +101,18 @@ class Machine:
     def check_wins(self, result):
         hits = {}
         horizontal = flip_horizontal(result)
+        result_one = [None, None, None, None, None]
+        result_two = [None, None, None, None, None]
+        result_three = [None, None, None, None, None]
+        result_one[0], result_one[1], result_one[2], result_one[3], result_one[4] = horizontal[0][0], horizontal[0][1], \
+                                                                          horizontal[0][2], horizontal[0][3], \
+                                                                          horizontal[0][4]
+        result_two[0], result_two[1], result_two[2], result_two[3], result_two[4] = horizontal[1][0], horizontal[1][1], \
+                                                                          horizontal[1][2], horizontal[1][3], \
+                                                                          horizontal[1][4]
+        result_three[0], result_three[1], result_three[2], result_three[3], result_three[4] = horizontal[2][0], horizontal[2][1], \
+                                                                          horizontal[2][2], horizontal[2][3], \
+                                                                          horizontal[2][4]
         result_v = [None, None, None, None, None]
         result_v[0], result_v[1], result_v[2], result_v[3], result_v[4] = horizontal[0][0], horizontal[1][1], \
                                                                           horizontal[2][2], horizontal[1][3], \
@@ -110,8 +122,25 @@ class Machine:
         result_inverted_v[0], result_inverted_v[1], result_inverted_v[2], result_inverted_v[3], result_inverted_v[4] = \
                                                                                 horizontal[2][0], horizontal[1][1], \
                                                                                 horizontal[0][2], horizontal[1][3], \
-                                                                                horizontal[2][4]
-        if all(x == result_v[0] for x in result_v):
+                                                                               horizontal[2][4]
+        if all(symbol == result_one[0] != 'Енот' for symbol in result_one) and all(
+                result_one[i] == result_two[i] for i in range(len(result_one))):
+            hits = {6: [result_v[0], [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]]}
+            self.can_animate = True
+            return hits
+
+        elif all(symbol == result_two[0] != 'Енот' for symbol in result_two) and all(
+                result_two[i] == result_three[i] for i in range(len(result_two))):
+            hits = {7: [result_v[0], [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]]}
+            self.can_animate = True
+            return hits
+
+        elif all(symbol == result_three[0] != 'Енот' for symbol in result_three) and all(
+                result_one[i] == result_three[i] for i in range(len(result_one))):
+            hits = {8: [result_v[0], [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]]}
+            self.can_animate = True
+            return hits
+        elif all(x == result_v[0] for x in result_v):
             hits = {4: [result_v[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
@@ -119,10 +148,23 @@ class Machine:
             hits = {5: [result_inverted_v[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
+
+        elif all(x == result_one[0] for x in result_one):
+            hits = {9: [result_one[0], [0, 1, 2, 3, 4]]}
+            self.can_animate = True
+            return hits
+        elif all(x == result_two[0] for x in result_two):
+            hits = {10: [result_two[0], [0, 1, 2, 3, 4]]}
+            self.can_animate = True
+            return hits
+        elif all(x == result_three[0] for x in result_three):
+            hits = {11: [result_three[0], [0, 1, 2, 3, 4]]}
+            self.can_animate = True
+            return hits
         else:
             for row in horizontal:
                 for sym in row:
-                    if row.count(sym) > 4 and sym != 'Енот':  # Потенциальная победа
+                    if row.count(sym) > 2  and sym != 'Енот':  # Потенциальная победа
                         possible_win = [idx for idx, val in enumerate(row) if sym == val]
                         # Проверяем possible_win на наличие подпоследовательности длиной более 2 и добавляем к попаданиям
                         if len(longest_seq(possible_win)) > 2:
@@ -135,6 +177,11 @@ class Machine:
         multiplier = sum(len(v[1]) for v in win_data.values())
         payout_mapping = {
             5: 'five_row',
+            7: 'three_row',
+            6: 'three_row',
+            # 8: 'three_row',
+            3: 'three_row',
+            10: 'ten_row'
         }
 
         spin_payout = settings.payouts.get(payout_mapping.get(multiplier, None), 0) * curr_player.bet_size
@@ -148,26 +195,39 @@ class Machine:
         sum = 0
         for item in win_data.values():
             sum += len(item[1])
-        if sum == 3:
-            self.win_three.play()
-        elif sum == 4:
-            self.win_four.play()
-        elif sum > 4:
+        # if sum == 3:
+        #     self.win_three.play()
+        # elif sum > 4:
+        #     self.win_four.play()
+        if sum == 5:
             self.win_five.play()
 
     def win_animation(self):
         if self.win_animation_ongoing and self.win_data:
+            flag = True
             for k, v in list(self.win_data.items()):
-                if k == 1:
-                    animationRow = 3
-                elif k == 3:
-                    animationRow = 1
-                elif k == 2:
-                    animationRow = 2
-                elif k == 4:
-                    animationRow = 4
-                else:
-                    animationRow = 5
+                data = self.win_data.items()
+                win_numbers = list(data)[0][1][1]
+                if len(win_numbers) == 3 and flag is False:
+                    continue
+                if len(win_numbers) == 3:
+                    flag = False
+                if len(v[1]) == 4:
+                    continue
+                mapping = {
+                    1: 3,
+                    3: 1,
+                    2: 2,
+                    4: 4,
+                    5: 5,
+                    6: 6,
+                    7: 7,
+                    8: 8,
+                    9: 9,
+                    10: 10
+                }
+
+                animationRow = mapping.get(k, 11)
                 animationCols = v[1]
                 if animationRow <= 3:
                     for reel in self.reel_list:
@@ -182,13 +242,52 @@ class Machine:
                     for reel_index, symbol_index in [(1, 3), (2, 3), (3, 3), (0, 2), (2, 2), (4, 2), (0, 1),
                                                      (1, 1), (3, 1), (4, 1)]:
                         self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
-                else:
+                elif animationRow == 5:
                     for reel_index, symbol_index in [(0, 1), (1, 2), (2, 3), (3, 2), (4, 1)]:
                         self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
                     for reel_index, symbol_index in [(0, 3), (1, 3), (3, 3), (4, 3), (0, 2), (2, 2), (4, 2),
                                                      (1, 1), (2, 1), (3, 1)]:
                         self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
+                elif animationRow == 6:
+                    for reel_index, symbol_index in [(0, 3), (1, 3), (2, 3), (3, 3), (4, 3),
+                                                     (0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
+                    for reel_index, symbol_index in [(0, 1), (1, 1), (2, 1), (3, 1), (4, 1)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
+                elif animationRow == 7:
+                    for reel_index, symbol_index in [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2),
+                                                     (0, 1), (1, 1), (2, 1), (3, 1), (4, 1)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
+                    for reel_index, symbol_index in [(0, 3), (1, 3), (2, 3), (3, 3), (4, 3)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
+                elif animationRow == 8:
+                    for reel_index, symbol_index in [(0, 1), (1, 1), (2, 1), (3, 1), (4, 1),
+                                                     (0, 3), (1, 3), (2, 3), (3, 3), (4, 3)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
+                    for reel_index, symbol_index in [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
 
+
+                elif animationRow == 9:
+                    for reel_index, symbol_index in [(0, 3), (1, 3), (2, 3), (3, 3), (4, 3)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
+                    for reel_index, symbol_index in [(0, 1), (1, 1), (2, 1), (3, 1), (4, 1),
+                                                     (0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
+
+                elif animationRow == 10:
+                    for reel_index, symbol_index in [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
+                    for reel_index, symbol_index in [(0, 1), (1, 1), (2, 1), (3, 1), (4, 1),
+                                                     (0, 3), (1, 3), (2, 3), (3, 3), (4, 3)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
+
+                elif animationRow == 11:
+                    for reel_index, symbol_index in [(0, 1), (1, 1), (2, 1), (3, 1), (4, 1)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_in = True
+                    for reel_index, symbol_index in [(0, 3), (1, 3), (2, 3), (3, 3), (4, 3),
+                                                     (0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]:
+                        self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
     def update(self, delta_time):
         self.cooldowns()
         self.input()

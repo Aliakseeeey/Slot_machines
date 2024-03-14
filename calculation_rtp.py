@@ -21,7 +21,8 @@ def calculation_rtp(bet_size: int) -> float:
     probabilities = [uniform_probability] * num_combinations
 
     payouts = [
-        bet_size * 9.7 if 'LLLLL' in combination or 'BBBBB' in combination else
+        bet_size * 3.39 if 'LLLLL' in combination or 'BBBBB' in combination else
+        bet_size * 0.5 if 'LLL' in combination or 'BBB' in combination else
         0 for combination in symbol_combinations
     ]
 
