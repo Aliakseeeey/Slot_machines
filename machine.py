@@ -5,18 +5,28 @@ from settings import *
 from ui import UI
 from wins import *
 import pygame
+import time
 
 
 class Machine:
-    def __init__(self):
+    def __init__(self, ui):
         self.display_surface = pygame.display.get_surface()
-        self.machine_balance = 10000.00
+        self.machine_balance = 1000.00
         self.reel_index = 0
         self.reel_list = {}
         self.can_toggle = True
         self.spinning = False
         self.can_animate = False
         self.win_animation_ongoing = False
+        self.ui = ui
+        # Добавление кнопок "+" и "-" внизу экрана
+        self.plus_button_image = pygame.image.load('graphics/1/icons8-плюс-48.png').convert_alpha()
+        self.minus_button_image = pygame.image.load('graphics/1/icons8-minus-48.png').convert_alpha()
+        self.plus_button_rect = self.plus_button_image.get_rect(bottomleft=(1290, 980))
+        self.minus_button_rect = self.minus_button_image.get_rect(bottomright=(1270, 980))
+        self.last_button_press_time = 0.0
+        self.increase_bet_flag = False
+        self.decrease_bet_flag = False
 
         self.prev_result = {0: None, 1: None, 2: None, 3: None, 4: None}
         self.spin_result = {0: None, 1: None, 2: None, 3: None, 4: None}
@@ -59,12 +69,29 @@ class Machine:
     def input(self):
         keys = pygame.key.get_pressed()
 
+        # if keys[pygame.K_EQUALS]:
+        #     self.currPlayer.increase_bet()
+        # elif keys[pygame.K_MINUS]:
+        #     self.currPlayer.decrease_bet()
+
+        # Проверьте нажатия на кнопки "+/-" на экране
+        self.after_spin()
+        mouse_pos = pygame.mouse.get_pos()
+        if pygame.mouse.get_pressed()[0]:
+            if self.plus_button_rect.collidepoint(mouse_pos):
+                self.increase_bet()
+            elif self.minus_button_rect.collidepoint(mouse_pos):
+                self.decrease_bet()
+        max_win = self.checking_maximum_win()
+        self.maximum_bet_scroll()
         # Проверяет наличие клавиши пробела, возможности переключения вращения и баланса для покрытия размера ставки.
-        if keys[pygame.K_SPACE] and self.can_toggle and self.currPlayer.balance >= self.currPlayer.bet_size:
+        # if keys[pygame.K_SPACE] and self.can_toggle and self.currPlayer.balance >= self.currPlayer.bet_size:
+        if keys[pygame.K_SPACE] and self.can_toggle and self.machine_balance >= max_win:
             self.toggle_spinning()
             self.spin_time = pygame.time.get_ticks()
             self.currPlayer.place_bet()
-            self.machine_balance += self.currPlayer.bet_size
+            self.balance_machine()
+
             self.currPlayer.last_payout = None
 
     def draw_reels(self, delta_time):
@@ -95,7 +122,6 @@ class Machine:
     def get_result(self):
         for reel in self.reel_list:
             self.spin_result[reel] = self.reel_list[reel].reel_spin_result()
-
         return self.spin_result
 
     def check_wins(self, result):
@@ -140,24 +166,24 @@ class Machine:
             hits = {8: [result_v[0], [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
-        elif all(x == result_v[0] for x in result_v):
+        elif all(x == result_v[0] != 'Енот' for x in result_v):
             hits = {4: [result_v[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
-        elif all(x == result_inverted_v[0] for x in result_inverted_v):
+        elif all(x == result_inverted_v[0] != 'Енот' for x in result_inverted_v):
             hits = {5: [result_inverted_v[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
 
-        elif all(x == result_one[0] for x in result_one):
+        elif all(x == result_one[0] != 'Енот' for x in result_one):
             hits = {9: [result_one[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
-        elif all(x == result_two[0] for x in result_two):
+        elif all(x == result_two[0] != 'Енот' for x in result_two):
             hits = {10: [result_two[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
-        elif all(x == result_three[0] for x in result_three):
+        elif all(x == result_three[0] != 'Енот' for x in result_three):
             hits = {11: [result_three[0], [0, 1, 2, 3, 4]]}
             self.can_animate = True
             return hits
@@ -185,9 +211,10 @@ class Machine:
         }
 
         spin_payout = settings.payouts.get(payout_mapping.get(multiplier, None), 0) * curr_player.bet_size
-
         curr_player.balance += spin_payout
+        # Уменьшение баланса машины на выигрыш
         self.machine_balance -= spin_payout
+        ###########################
         curr_player.last_payout = spin_payout
         curr_player.total_won += spin_payout
 
@@ -288,6 +315,45 @@ class Machine:
                     for reel_index, symbol_index in [(0, 3), (1, 3), (2, 3), (3, 3), (4, 3),
                                                      (0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]:
                         self.reel_list[reel_index].symbol_list.sprites()[symbol_index].fade_out = True
+
+    def balance_machine(self):
+        """Увеличение баланса машины на ставку игрока"""
+        self.machine_balance += self.currPlayer.bet_size
+        return self.machine_balance
+
+    def checking_maximum_win(self):
+        """Проверка макимального выигрыша за данный прокрут"""
+        maximum_win_scroll = self.currPlayer.bet_size * settings.payouts.get("ten_row")
+        return maximum_win_scroll
+
+    def maximum_bet_scroll(self):
+        """Максимальная ставка для данного прокрута"""
+        maximum_bet = self.machine_balance / settings.payouts.get("ten_row")
+        print(f"Баланс машины - {self.machine_balance}")
+        print(int(maximum_bet))
+        return int(maximum_bet)
+
+    def increase_bet(self):
+        """Увеличение ставки на 10, но не превышая максимальное значение. Кнопка реагирует только каждые 0.3сек"""
+        current_time = time.time()
+        if current_time - self.last_button_press_time >= 0.3:
+            maximum_bet = int(self.maximum_bet_scroll())
+            self.currPlayer.bet_size = min(self.currPlayer.bet_size + 10.00, maximum_bet)
+
+            self.last_button_press_time = current_time
+
+    def decrease_bet(self):
+        """Уменьшение ставки на 10, но не менее 10. Кнопка реагирует только каждые 0.3сек"""
+        current_time = time.time()
+        if current_time - self.last_button_press_time >= 0.3:
+            self.currPlayer.bet_size = max(10.00, self.currPlayer.bet_size - 10.00)
+            self.last_button_press_time = current_time
+
+    def after_spin(self):
+        """Исправление ставки на макимально возможную"""
+        if self.currPlayer.bet_size > self.maximum_bet_scroll():
+            self.currPlayer.bet_size = self.maximum_bet_scroll()
+
     def update(self, delta_time):
         self.cooldowns()
         self.input()

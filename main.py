@@ -1,6 +1,8 @@
 from machine import Machine
 from settings import *
 import ctypes, pygame, sys
+from ui import UI
+from player import Player
 
 ctypes.windll.user32.SetProcessDPIAware()
 
@@ -17,7 +19,15 @@ class Game:
         self.clock = pygame.time.Clock()
         self.bg_image = pygame.image.load(BG_IMAGE_PATH).convert_alpha()
         self.grid_image = pygame.image.load(GRID_IMAGE_PATH).convert_alpha()
-        self.machine = Machine()
+        # Создание экземпляра класса Player
+        self.currPlayer = Player()
+
+        # Создание экземпляра класса UI с передачей экземпляра класса Player
+        self.ui = UI(self.currPlayer)
+
+        # Создание экземпляра класса Machine с передачей экземпляра класса UI
+        self.machine = Machine(self.ui)
+
         self.delta_time = 0
 
         # Звук

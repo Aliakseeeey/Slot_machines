@@ -1,12 +1,15 @@
 from settings import *
 
+
 class Player():
     def __init__(self):
-        self.balance = 10000.00
+        self.balance = 1000000.00
         self.bet_size = 10.00
         self.last_payout = 0.00
         self.total_won = 0.00
         self.total_wager = 0.00
+        self.count = 0
+
 
     def get_data(self):
         player_data = {}
@@ -19,5 +22,9 @@ class Player():
 
     def place_bet(self):
         bet = self.bet_size
-        self.balance -= bet
         self.total_wager += bet
+        self.balance -= bet
+
+
+
+
